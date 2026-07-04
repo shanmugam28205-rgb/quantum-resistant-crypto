@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quantum-Resistant Cryptography — Post-Quantum Demo</title>
+<meta name="description" content="A Python implementation and demonstration of NIST-standardized post-quantum cryptographic algorithms: ML-KEM, ML-DSA, and SLH-DSA.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0B1120;
+    --panel:#121B2E;
+    --panel-2:#182338;
+    --line:#26314A;
+    --text:#E7E9F2;
+    --muted:#8C97B4;
+    --signal:#F2B84B;
+    --signal-dim:#8a6a2c;
+    --lattice-a:1;
+    --lattice-b:0.4;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--ink);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  h1,h2,h3{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    margin:0;
+    letter-spacing:-0.01em;
+  }
+  .mono{
+    font-family:'IBM Plex Mono',monospace;
+  }
+  a{color:inherit;text-decoration:none;}
+  .wrap{
+    max-width:1080px;
+    margin:0 auto;
+    padding:0 32px;
+  }
+
+  /* ---------- NAV ---------- */
+  nav{
+    position:sticky; top:0; z-index:50;
+    background:rgba(11,17,32,0.85);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  nav .wrap{
+    display:flex; align-items:center; justify-content:space-between;
+    height:64px;
+  }
+  .brand{
+    display:flex; align-items:center; gap:10px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:14px; color:var(--text);
+  }
+  .brand-dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--signal);
+    box-shadow:0 0 12px var(--signal);
+  }
+  .nav-links{display:flex; gap:28px; font-size:14px; color:var(--muted);}
+  .nav-links a:hover{color:var(--text);}
+  .nav-cta{
+    border:1px solid var(--line);
+    padding:8px 16px;
+    border-radius:6px;
+    font-size:13px;
+    color:var(--text) !important;
+    transition:border-color .2s, background .2s;
+  }
+  .nav-cta:hover{border-color:var(--signal); background:rgba(242,184,75,0.08);}
+  @media (max-width:720px){ .nav-links{display:none;} }
+
+  /* ---------- HERO ---------- */
+  .hero{
+    position:relative;
+    padding:96px 0 80px;
+    border-bottom:1px solid var(--line);
+    overflow:hidden;
+  }
+  #lattice-canvas{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    opacity:0.55;
+    mask-image: linear-gradient(to bottom, black 0%, black 55%, transparent 100%);
+  }
+  .hero-inner{position:relative; z-index:2;}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--signal);
+    margin-bottom:22px;
+    display:flex; align-items:center; gap:10px;
+  }
+  .eyebrow::before{
+    content:''; width:22px; height:1px; background:var(--signal-dim);
+  }
+  .hero h1{
+    font-size:clamp(36px,5.4vw,64px);
+    line-height:1.08;
+    max-width:820px;
+    color:#fff;
+  }
+  .hero h1 em{
+    font-style:italic;
+    color:var(--signal);
+  }
+  .hero p.lede{
+    margin-top:24px;
+    font-size:18px;
+    line-height:1.6;
+    color:var(--muted);
+    max-width:600px;
+  }
+  .hero-actions{
+    margin-top:40px;
+    display:flex; gap:14px; flex-wrap:wrap;
+  }
+  .btn{
+    padding:13px 22px;
+    border-radius:7px;
+    font-size:14px;
+    font-weight:600;
+    display:inline-flex; align-items:center; gap:8px;
+    transition:transform .15s, box-shadow .15s, background .15s, border-color .15s;
+  }
+  .btn-primary{
+    background:var(--signal);
+    color:#1a1204;
+  }
+  .btn-primary:hover{transform:translateY(-1px); box-shadow:0 8px 24px -8px rgba(242,184,75,0.5);}
+  .btn-ghost{
+    border:1px solid var(--line);
+    color:var(--text);
+  }
+  .btn-ghost:hover{border-color:var(--muted); transform:translateY(-1px);}
+
+  .hero-stats{
+    margin-top:64px;
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:1px;
+    background:var(--line);
+    border:1px solid var(--line);
+    border-radius:10px;
+    overflow:hidden;
+  }
+  .stat{
+    background:rgba(18,27,46,0.6);
+    padding:20px 22px;
+  }
+  .stat .num{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:22px; color:var(--signal);
+  }
+  .stat .label{
+    font-size:12px; color:var(--muted); margin-top:6px;
+  }
+  @media (max-width:720px){ .hero-stats{grid-template-columns:repeat(2,1fr);} }
+
+  /* ---------- SECTION SHELL ---------- */
+  section{padding:80px 0;}
+  .section-head{
+    max-width:640px;
+    margin-bottom:48px;
+  }
+  .section-head .eyebrow{margin-bottom:16px;}
+  .section-head h2{
+    font-size:clamp(26px,3.4vw,36px);
+    color:#fff;
+  }
+  .section-head p{
+    margin-top:14px;
+    color:var(--muted);
+    font-size:16px;
+    line-height:1.65;
+  }
+
+  /* ---------- THREAT SECTION ---------- */
+  .threat-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:1px;
+    background:var(--line);
+    border:1px solid var(--line);
+    border-radius:10px;
+    overflow:hidden;
+  }
+  .threat-card{
+    background:var(--panel);
+    padding:32px;
+  }
+  .threat-card h3{
+    font-size:19px; color:#fff; margin-bottom:12px;
+    display:flex; align-items:center; gap:10px;
+  }
+  .threat-tag{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10px;
+    padding:3px 8px;
+    border-radius:20px;
+    letter-spacing:0.05em;
+  }
+  .tag-broken{background:rgba(224,90,90,0.12); color:#e05a5a; border:1px solid rgba(224,90,90,0.3);}
+  .tag-weakened{background:rgba(242,184,75,0.12); color:var(--signal); border:1px solid rgba(242,184,75,0.3);}
+  .threat-card p{
+    color:var(--muted); font-size:14.5px; line-height:1.65; margin:0;
+  }
+  .threat-card .impact{
+    margin-top:16px;
+    padding-top:16px;
+    border-top:1px solid var(--line);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    color:var(--text);
+  }
+  @media (max-width:720px){ .threat-grid{grid-template-columns:1fr;} }
+
+  /* ---------- BASIS DIAGRAM (signature element) ---------- */
+  .basis-section{
+    background:var(--panel);
+    border-top:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+  }
+  .basis-wrap{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:56px;
+    align-items:center;
+  }
+  .basis-diagram{
+    background:var(--ink);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:20px;
+  }
+  .basis-caption{
+    display:flex; justify-content:space-between;
+    margin-top:14px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    color:var(--muted);
+  }
+  .basis-caption span.good{color:var(--signal);}
+  .basis-caption span.bad{color:#e05a5a;}
+  .basis-copy h2{font-size:28px; color:#fff; margin-bottom:16px;}
+  .basis-copy p{color:var(--muted); line-height:1.7; font-size:15.5px;}
+  .basis-copy p + p{margin-top:14px;}
+  @media (max-width:820px){ .basis-wrap{grid-template-columns:1fr;} }
+
+  /* ---------- ALGORITHMS ---------- */
+  .algo-list{display:flex; flex-direction:column; gap:1px; background:var(--line); border:1px solid var(--line); border-radius:10px; overflow:hidden;}
+  .algo-row{
+    background:var(--panel);
+    padding:26px 30px;
+    display:grid;
+    grid-template-columns:200px 1fr 160px;
+    gap:24px;
+    align-items:center;
+  }
+  .algo-name{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:15px; color:#fff;
+  }
+  .algo-name .fips{
+    display:block; margin-top:4px; font-size:11px; color:var(--signal);
+  }
+  .algo-desc{color:var(--muted); font-size:14px; line-height:1.6;}
+  .algo-desc b{color:var(--text); font-weight:600;}
+  .algo-role{
+    text-align:right;
+    font-size:12px;
+    color:var(--muted);
+    font-family:'IBM Plex Mono',monospace;
+  }
+  @media (max-width:780px){
+    .algo-row{grid-template-columns:1fr; text-align:left; gap:10px;}
+    .algo-role{text-align:left;}
+  }
+
+  /* ---------- ARCHITECTURE / TREE ---------- */
+  .tree-shell{
+    background:var(--ink);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:28px 32px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    line-height:1.9;
+    overflow-x:auto;
+  }
+  .tree-shell .c1{color:var(--signal);}
+  .tree-shell .c2{color:var(--muted);}
+  .tree-shell .c3{color:var(--text);}
+
+  /* ---------- QUICKSTART ---------- */
+  .code-tabs{
+    display:flex; gap:8px; margin-bottom:0px;
+  }
+  .code-tab{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    padding:9px 16px;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-bottom:none;
+    border-radius:8px 8px 0 0;
+    color:var(--muted);
+  }
+  .code-tab.active{color:var(--signal); background:var(--ink);}
+  .code-block{
+    background:var(--ink);
+    border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;
+    padding:24px 28px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13.5px;
+    line-height:1.85;
+    color:var(--text);
+    overflow-x:auto;
+  }
+  .code-block .cm{color:var(--muted);}
+  .code-block .sg{color:var(--signal);}
+
+  /* ---------- FOOTER ---------- */
+  footer{
+    border-top:1px solid var(--line);
+    padding:48px 0;
+  }
+  .footer-inner{
+    display:flex; justify-content:space-between; align-items:center;
+    flex-wrap:wrap; gap:20px;
+  }
+  footer .mono{font-size:12.5px; color:var(--muted);}
+  .footer-links{display:flex; gap:24px; font-size:13px; color:var(--muted);}
+  .footer-links a:hover{color:var(--text);}
+
+  ::selection{background:var(--signal); color:#1a1204;}
+
+  @media (prefers-reduced-motion: reduce){
+    #lattice-canvas{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <div class="brand"><span class="brand-dot"></span>pqcrypto-demo</div>
+    <div class="nav-links">
+      <a href="#threat">The Threat</a>
+      <a href="#basis">How It Works</a>
+      <a href="#algorithms">Algorithms</a>
+      <a href="#structure">Structure</a>
+      <a href="#quickstart">Quickstart</a>
+    </div>
+    <a class="nav-cta" href="https://github.com/" target="_blank" rel="noopener">View on GitHub →</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <canvas id="lattice-canvas"></canvas>
+  <div class="wrap hero-inner">
+    <div class="eyebrow">FIPS 203 · 204 · 205 — NIST Post-Quantum Standard</div>
+    <h1>A lock that still holds<br>when the key gets <em>quantum</em>.</h1>
+    <p class="lede">A Python implementation of ML-KEM, ML-DSA, and SLH-DSA — the algorithms
+    chosen to replace RSA and ECC once quantum computers make Shor's algorithm practical.
+    Built to run, benchmark, and read.</p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="https://github.com/" target="_blank" rel="noopener">Get the source →</a>
+      <a class="btn btn-ghost" href="#quickstart">Run the demo</a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat"><div class="num">3</div><div class="label">NIST-standardized algorithms</div></div>
+      <div class="stat"><div class="num">2024</div><div class="label">Year FIPS 203–205 finalized</div></div>
+      <div class="stat"><div class="num">O(2ⁿ)</div><div class="label">Lattice problem cost, even on quantum HW</div></div>
+      <div class="stat"><div class="num">100%</div><div class="label">Python, wraps audited liboqs</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="threat">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Why migrate at all</div>
+      <h2>Two algorithms, one deadline</h2>
+      <p>Quantum computers don't threaten all cryptography equally. The danger is concentrated
+      in exactly the algorithms the internet depends on for key exchange and signatures.</p>
+    </div>
+    <div class="threat-grid">
+      <div class="threat-card">
+        <h3>Shor's Algorithm <span class="threat-tag tag-broken">breaks outright</span></h3>
+        <p>Solves integer factorization and discrete logarithms in polynomial time on a
+        quantum computer — the exact hard problems RSA, ECC, and Diffie-Hellman are built on.</p>
+        <div class="impact">→ RSA, ECC, DH: fully broken, not just weakened</div>
+      </div>
+      <div class="threat-card">
+        <h3>Grover's Algorithm <span class="threat-tag tag-weakened">weakens only</span></h3>
+        <p>Gives a quadratic brute-force speedup against symmetric ciphers and hash functions —
+        serious, but solved by doubling key size, not by a redesign.</p>
+        <div class="impact">→ AES-128 → AES-256, SHA-256 → SHA-512</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="basis-section" id="basis">
+  <div class="wrap basis-wrap">
+    <div class="basis-diagram">
+      <svg viewBox="0 0 460 340" width="100%" xmlns="http://www.w3.org/2000/svg" id="basis-svg"></svg>
+      <div class="basis-caption">
+        <span class="bad">— public basis (messy, published)</span>
+        <span class="good">— private basis (clean, secret) —</span>
+      </div>
+    </div>
+    <div class="basis-copy">
+      <h2>The idea underneath ML-KEM &amp; ML-DSA</h2>
+      <p>Picture points arranged in a perfectly regular grid stretched across many
+      dimensions — a <b style="color:#fff">lattice</b>. There are countless ways to
+      describe the same grid. A tidy, orthogonal set of directions makes it trivial to
+      find the point nearest to any target. A tangled, skewed set describes the identical
+      grid but makes that same search practically unsolvable.</p>
+      <p>The tidy description is the private key. The tangled one is published as the
+      public key. No known algorithm — classical or quantum — can efficiently untangle
+      one back into the other. That asymmetry is the entire security guarantee behind
+      Kyber and Dilithium.</p>
+    </div>
+  </div>
+</section>
+
+<section id="algorithms">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">What's implemented</div>
+      <h2>Three standards, three jobs</h2>
+      <p>Each NIST-selected algorithm targets a different cryptographic role. This repo
+      wraps all three via the audited <span class="mono">liboqs</span> reference implementation.</p>
+    </div>
+    <div class="algo-list">
+      <div class="algo-row">
+        <div class="algo-name">ML-KEM<span class="fips">FIPS 203 · Kyber</span></div>
+        <div class="algo-desc"><b>Key encapsulation.</b> Lattice-based (Module-LWE). Replaces RSA/ECDH for establishing a shared secret over an open channel.</div>
+        <div class="algo-role">Key exchange</div>
+      </div>
+      <div class="algo-row">
+        <div class="algo-name">ML-DSA<span class="fips">FIPS 204 · Dilithium</span></div>
+        <div class="algo-desc"><b>Digital signatures.</b> Lattice-based (Module-LWE/SIS). Replaces RSA/ECDSA — compact, fast to verify.</div>
+        <div class="algo-role">Signing &amp; verification</div>
+      </div>
+      <div class="algo-row">
+        <div class="algo-name">SLH-DSA<span class="fips">FIPS 205 · SPHINCS+</span></div>
+        <div class="algo-desc"><b>Digital signatures.</b> Hash-based only — no lattice assumption. Larger signatures, but the most conservative security proof of the three.</div>
+        <div class="algo-role">Backup signing scheme</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="structure">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Repository layout</div>
+      <h2>Every algorithm, its own module</h2>
+      <p>Classical baselines sit alongside their post-quantum replacements so benchmark
+      code — and readers — can compare them directly.</p>
+    </div>
+    <div class="tree-shell">
+<span class="c1">quantum-resistant-crypto/</span>
+├── src/pqcrypto_demo/
+│   ├── <span class="c3">kem/</span>          <span class="c2"># ML-KEM (Kyber) — key exchange</span>
+│   ├── <span class="c3">signatures/</span>   <span class="c2"># ML-DSA (Dilithium), SLH-DSA (SPHINCS+)</span>
+│   ├── <span class="c3">classical/</span>    <span class="c2"># RSA / ECC — for comparison only</span>
+│   ├── <span class="c3">hybrid/</span>       <span class="c2"># classical + PQC combined exchange</span>
+│   └── <span class="c3">benchmark/</span>    <span class="c2"># timing &amp; key-size comparisons</span>
+├── <span class="c3">examples/</span>          <span class="c2"># runnable demo scripts</span>
+├── <span class="c3">tests/</span>             <span class="c2"># pytest suite</span>
+└── <span class="c1">.github/workflows/</span>  <span class="c2"># CI on every push</span>
+    </div>
+  </div>
+</section>
+
+<section id="quickstart">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Try it</div>
+      <h2>Three commands to a shared secret</h2>
+      <p>Needs a C build toolchain for <span class="mono">liboqs</span> — see
+      <span class="mono">docs/setup_liboqs.md</span> if the install fails.</p>
+    </div>
+    <div class="code-tabs">
+      <div class="code-tab active">terminal</div>
+    </div>
+    <div class="code-block"><span class="cm"># install</span>
+pip install -r requirements.txt &amp;&amp; pip install -e .
+
+<span class="cm"># quantum-resistant key exchange</span>
+python examples/demo_key_exchange.py
+
+<span class="cm"># sign & verify with ML-DSA</span>
+python examples/demo_sign_verify.py
+
+<span class="cm"># benchmark classical vs. post-quantum</span>
+python examples/compare_classical_vs_pqc.py
+<span class="sg">→ Shared secret matches. Quantum-resistant key exchange successful.</span></div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap footer-inner">
+    <div class="mono">MIT Licensed · NIST FIPS 203 / 204 / 205</div>
+    <div class="footer-links">
+      <a href="https://openquantumsafe.org/" target="_blank" rel="noopener">Open Quantum Safe</a>
+      <a href="https://csrc.nist.gov/pubs/fips/203/final" target="_blank" rel="noopener">FIPS 203</a>
+      <a href="https://github.com/" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+// ---------- Lattice background animation ----------
+(function(){
+  const canvas = document.getElementById('lattice-canvas');
+  const ctx = canvas.getContext('2d');
+  let w, h, dpr;
+  const spacing = 46;
+  let t = 0;
+
+  function resize(){
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    w = canvas.offsetWidth; h = canvas.offsetHeight;
+    canvas.width = w * dpr; canvas.height = h * dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function draw(){
+    ctx.clearRect(0,0,w,h);
+    const cols = Math.ceil(w/spacing)+2;
+    const rows = Math.ceil(h/spacing)+2;
+    const points = [];
+
+    for(let i=-1;i<cols;i++){
+      for(let j=-1;j<rows;j++){
+        const ox = i*spacing + Math.sin(j*0.6 + t*0.4)*6;
+        const oy = j*spacing + Math.cos(i*0.6 + t*0.4)*6;
+        points.push([ox,oy,i,j]);
+      }
+    }
+
+    ctx.strokeStyle = 'rgba(140,151,180,0.14)';
+    ctx.lineWidth = 1;
+    for(const [x,y,i,j] of points){
+      const right = points.find(p=>p[2]===i+1 && p[3]===j);
+      const down = points.find(p=>p[2]===i && p[3]===j+1);
+      if(right){ ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(right[0],right[1]); ctx.stroke(); }
+      if(down){ ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(down[0],down[1]); ctx.stroke(); }
+    }
+
+    for(const [x,y] of points){
+      ctx.beginPath();
+      ctx.arc(x,y,1.6,0,Math.PI*2);
+      ctx.fillStyle = 'rgba(231,233,242,0.35)';
+      ctx.fill();
+    }
+
+    // one highlighted "target" node pulsing in signal color
+    const target = points[Math.floor(points.length*0.42)];
+    if(target){
+      const pulse = 3 + Math.sin(t*2)*1.5;
+      ctx.beginPath();
+      ctx.arc(target[0],target[1],pulse+4,0,Math.PI*2);
+      ctx.fillStyle = 'rgba(242,184,75,0.15)';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(target[0],target[1],pulse,0,Math.PI*2);
+      ctx.fillStyle = '#F2B84B';
+      ctx.fill();
+    }
+
+    t += 0.012;
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ---------- Basis diagram (signature element) ----------
+(function(){
+  const svg = document.getElementById('basis-svg');
+  const NS = 'http://www.w3.org/2000/svg';
+  const W = 460, H = 340;
+  const spacing = 34;
+  const originX = 60, originY = 260;
+
+  // background lattice points (the actual grid, invariant)
+  for(let i=-2;i<10;i++){
+    for(let j=-6;j<2;j++){
+      const x = originX + i*spacing*0.9 + j*spacing*0.35;
+      const y = originY + j*spacing*0.85;
+      if(x<10||x>W-10||y<10||y>H-10) continue;
+      const c = document.createElementNS(NS,'circle');
+      c.setAttribute('cx',x); c.setAttribute('cy',y); c.setAttribute('r',2.2);
+      c.setAttribute('fill','rgba(231,233,242,0.4)');
+      svg.appendChild(c);
+    }
+  }
+
+  function vec(x1,y1,x2,y2,color,width){
+    const l = document.createElementNS(NS,'line');
+    l.setAttribute('x1',x1); l.setAttribute('y1',y1);
+    l.setAttribute('x2',x2); l.setAttribute('y2',y2);
+    l.setAttribute('stroke',color); l.setAttribute('stroke-width',width);
+    l.setAttribute('marker-end','url(#arrow-'+color.replace('#','')+')');
+    svg.appendChild(l);
+  }
+
+  function arrowDef(color){
+    const defs = svg.querySelector('defs') || (function(){
+      const d = document.createElementNS(NS,'defs'); svg.appendChild(d); return d;
+    })();
+    const marker = document.createElementNS(NS,'marker');
+    const id = 'arrow-'+color.replace('#','');
+    marker.setAttribute('id',id);
+    marker.setAttribute('markerWidth','8'); marker.setAttribute('markerHeight','8');
+    marker.setAttribute('refX','4'); marker.setAttribute('refY','4');
+    marker.setAttribute('orient','auto');
+    const path = document.createElementNS(NS,'path');
+    path.setAttribute('d','M0,0 L8,4 L0,8 Z');
+    path.setAttribute('fill',color);
+    marker.appendChild(path);
+    defs.appendChild(marker);
+  }
+
+  arrowDef('#F2B84B'); arrowDef('#e05a5a');
+
+  // clean private basis (orthogonal-ish, short)
+  vec(originX, originY, originX + spacing*0.9, originY, '#F2B84B', 2.4);
+  vec(originX, originY, originX, originY - spacing*0.85, '#F2B84B', 2.4);
+
+  // messy public basis (long, skewed, describes the SAME lattice)
+  vec(originX, originY, originX + spacing*4.5, originY - spacing*0.7, '#e05a5a', 2.4);
+  vec(originX, originY, originX + spacing*1.2, originY - spacing*4.3, '#e05a5a', 2.4);
+
+  // target point + "shortest path" guess lines to show difficulty
+  const targetX = originX + spacing*3.1, targetY = originY - spacing*2.6;
+  const target = document.createElementNS(NS,'circle');
+  target.setAttribute('cx',targetX); target.setAttribute('cy',targetY); target.setAttribute('r',5);
+  target.setAttribute('fill','#fff');
+  svg.appendChild(target);
+
+  const label = document.createElementNS(NS,'text');
+  label.setAttribute('x', targetX+10); label.setAttribute('y', targetY+4);
+  label.setAttribute('fill', '#8C97B4');
+  label.setAttribute('font-family','IBM Plex Mono, monospace');
+  label.setAttribute('font-size','11');
+  label.textContent = 'target vector';
+  svg.appendChild(label);
+
+  const origin = document.createElementNS(NS,'circle');
+  origin.setAttribute('cx',originX); origin.setAttribute('cy',originY); origin.setAttribute('r',4);
+  origin.setAttribute('fill','#fff');
+  svg.appendChild(origin);
+})();
+</script>
+
+</body>
+</html>
